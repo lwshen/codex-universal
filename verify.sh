@@ -27,28 +27,15 @@ javac -version
 gradle --version | head -n 3
 mvn --version | head -n 1
 
-if [ "$TARGETARCH" = "amd64" ]; then \
-    echo "- Swift:"
-    swift --version
-fi
-
-echo "- Ruby:"
-ruby --version
-
-echo "- Rust:"
-rustc --version
-cargo --version
-
 echo "- Go:"
 go version
-
-echo "- PHP:"
-php --version
-composer --version
 
 echo "- Elixir:"
 elixir --version
 erl -version
 erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
+
+echo "- Codex:"
+codex --version
 
 echo "All language runtimes detected successfully."

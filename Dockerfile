@@ -40,7 +40,7 @@ RUN apt-get update \
         liblzma-dev=5.6.* \
         libncurses-dev=6.4+20240113-* \
         libnss3-dev=2:3.98-* \
-        libpq-dev=16.9-* \
+        libpq-dev=16.10-* \
         libpsl-dev=0.21.* \
         libpython3-dev=3.12.* \
         libreadline-dev=8.2-* \
@@ -150,6 +150,7 @@ ENV COREPACK_DEFAULT_TO_LATEST=0
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 ENV COREPACK_ENABLE_AUTO_PIN=0
 ENV COREPACK_ENABLE_STRICT=0
+ENV NODE_PATH=/opt/codex/npm/node_modules
 
 RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https://github.com/nvm-sh/nvm.git "$NVM_DIR" \
     && echo 'source $NVM_DIR/nvm.sh' >> /etc/profile \
@@ -164,6 +165,14 @@ RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https:/
     && npm cache clean --force || true \
     && pnpm store prune || true \
     && yarn cache clean || true
+
+RUN . $NVM_DIR/nvm.sh \
+    && nvm use "$NODE_VERSION" \
+    && install_root=/opt/codex/npm \
+    && mkdir -p "$install_root" \
+    && cd "$install_root" \
+    && npm install @openai/codex \
+    && npm cache clean --force || true
 
 ### BUN ###
 
@@ -186,42 +195,6 @@ RUN JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" |
     && mise use --global "java@${JAVA_VERSIONS%% *}" \
     && mise use --global "gradle@${GRADLE_VERSION}" \
     && mise use --global "maven@${MAVEN_VERSION}" \
-    && mise cache clear || true \
-    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
-
-### SWIFT ###
-
-ARG SWIFT_VERSIONS="6.1 5.10.1"
-# mise currently broken for swift on ARM
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
-      for v in $SWIFT_VERSIONS; do \
-        mise install "swift@${v}"; \
-      done && \
-      mise use --global "swift@${SWIFT_VERSIONS%% *}" \
-      && mise cache clear || true \
-      && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"; \
-    else \
-      echo "Skipping Swift install on $TARGETARCH"; \
-    fi
-
-### RUST ###
-
-ARG RUST_VERSIONS="1.89.0 1.88.0 1.87.0 1.86.0 1.85.1 1.84.1 1.83.0"
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain none \
-    && . "$HOME/.cargo/env" \
-    && echo 'source $HOME/.cargo/env' >> /etc/profile \
-    && rustup toolchain install $RUST_VERSIONS --profile minimal --component rustfmt --component clippy \
-    && rustup default ${RUST_VERSIONS%% *}
-
-### RUBY ###
-
-ARG RUBY_VERSIONS="3.2.3 3.3.8 3.4.4"
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libyaml-dev=0.2.* \
-    libgmp-dev=2:6.3.* \
-    && rm -rf /var/lib/apt/lists/* \
-    && for v in $RUBY_VERSIONS; do mise install "ruby@${v}"; done \
-    && mise use --global "ruby@${RUBY_VERSIONS%% *}" \
     && mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
 
@@ -251,29 +224,6 @@ RUN for v in $GO_VERSIONS; do mise install "go@${v}"; done \
     && mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
 
-### PHP ###
-
-ARG PHP_VERSIONS="8.4 8.3 8.2"
-ARG COMPOSER_ALLOW_SUPERUSER=1
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        autoconf=2.71-* \
-        bison=2:3.8.* \
-        libgd-dev=2.3.* \
-        libedit-dev=3.1-* \
-        libicu-dev=74.2-* \
-        libjpeg-dev=8c-* \
-        libonig-dev=6.9.* \
-        libpng-dev=1.6.* \
-        libpq-dev=16.9-* \
-        libzip-dev=1.7.* \
-        openssl=3.0.* \
-        re2c=3.1-* \
-    && rm -rf /var/lib/apt/lists/* \
-    && for v in $PHP_VERSIONS; do mise install "php@${v}"; done \
-    && mise use --global "php@${PHP_VERSIONS%% *}" \
-    && mise cache clear || true \
-    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
-
 ### ELIXIR ###
 
 ARG ERLANG_VERSION=27.1.2
@@ -282,6 +232,39 @@ RUN mise install "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
     && mise use --global "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
     && mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
+
+### Codex ###
+
+ARG CODEX_VERSION
+RUN /bin/bash -lc '\
+    set -euo pipefail; \
+    build_arch="${TARGETARCH:-}"; \
+    if [ -z "$build_arch" ]; then build_arch="$(uname -m)"; fi; \
+    case "$build_arch" in \
+        amd64|x86_64) codex_arch_suffix="x86_64-unknown-linux-musl" ;; \
+        arm64|aarch64) codex_arch_suffix="aarch64-unknown-linux-musl" ;; \
+        *) printf "Unsupported architecture \"%s\"\n" "$build_arch" >&2; exit 1 ;; \
+    esac; \
+    codex_version="${CODEX_VERSION:-}"; \
+    if [ -z "$codex_version" ]; then \
+        codex_version="$(curl -fsSL -H "Accept: application/vnd.github+json" -H "User-Agent: codex-build" https://api.github.com/repos/openai/codex/releases/latest | jq -r ".tag_name")"; \
+    fi; \
+    if [ -z "$codex_version" ] || [ "$codex_version" = "null" ]; then printf "Unable to determine Codex release version\n" >&2; exit 1; fi; \
+    tmp_tar="$(mktemp)"; \
+    url="https://github.com/openai/codex/releases/download/${codex_version}/codex-${codex_arch_suffix}.tar.gz"; \
+    printf "Downloading Codex CLI from %s\n" "$url"; \
+    curl -L --fail "$url" -o "$tmp_tar"; \
+    install_root="/opt/codex/${codex_version}"; \
+    rm -rf "$install_root"; \
+    mkdir -p "$install_root"; \
+    tar -xzf "$tmp_tar" -C "$install_root"; \
+    rm -f "$tmp_tar"; \
+    extracted_bin="$install_root/codex-${codex_arch_suffix}"; \
+    if [ ! -f "$extracted_bin" ]; then printf "Codex binary missing under %s\n" "$install_root" >&2; exit 1; fi; \
+    chmod 0755 "$extracted_bin"; \
+    mv "$extracted_bin" "$install_root/codex"; \
+    ln -sf "$install_root/codex" /usr/local/bin/codex; \
+'
 
 ### SETUP SCRIPTS ###
 
