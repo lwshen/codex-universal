@@ -11,7 +11,7 @@ For more details on environment setup, see [OpenAI Codex](http://platform.openai
 The Docker image is available at:
 
 ```
-docker pull ghcr.io/openai/codex-universal:latest
+docker pull registry.cn-shanghai.aliyuncs.com/formirror/mirror:codex-docker
 ```
 
 This repository builds the image for both linux/amd64 and linux/arm64. However we only run the linux/amd64 version.
@@ -28,9 +28,10 @@ The below script shows how can you approximate the `setup` environment in Codex:
 docker run --rm -it \
     -e CODEX_ENV_PYTHON_VERSION=3.12 \
     -e CODEX_ENV_NODE_VERSION=20 \
-    -e CODEX_ENV_GO_VERSION=1.23.8 \
+    -e CODEX_ENV_GO_VERSION=1.24.3 \
+    -e AICODEMIRROR_API_KEY=$AICODEMIRROR_API_KEY \
     -v $(pwd):/workspace/$(basename $(pwd)) -w /workspace/$(basename $(pwd)) \
-    ghcr.io/openai/codex-universal:latest
+    registry.cn-shanghai.aliyuncs.com/formirror/mirror:codex-docker
 ```
 
 `codex-universal` includes setup scripts that look for `CODEX_ENV_*` environment variables and configures the language version accordingly.

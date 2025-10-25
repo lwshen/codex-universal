@@ -35,7 +35,7 @@ elixir --version
 erl -version
 erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
 
-echo "- Codex:"
-codex --version
+# echo "- Codex:"
+# codex --version
 
 echo "All language runtimes detected successfully."

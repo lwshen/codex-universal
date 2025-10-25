@@ -233,39 +233,6 @@ RUN mise install "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
     && mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
 
-### Codex ###
-
-ARG CODEX_VERSION
-RUN /bin/bash -lc '\
-    set -euo pipefail; \
-    build_arch="${TARGETARCH:-}"; \
-    if [ -z "$build_arch" ]; then build_arch="$(uname -m)"; fi; \
-    case "$build_arch" in \
-        amd64|x86_64) codex_arch_suffix="x86_64-unknown-linux-musl" ;; \
-        arm64|aarch64) codex_arch_suffix="aarch64-unknown-linux-musl" ;; \
-        *) printf "Unsupported architecture \"%s\"\n" "$build_arch" >&2; exit 1 ;; \
-    esac; \
-    codex_version="${CODEX_VERSION:-}"; \
-    if [ -z "$codex_version" ]; then \
-        codex_version="$(curl -fsSL -H "Accept: application/vnd.github+json" -H "User-Agent: codex-build" https://api.github.com/repos/openai/codex/releases/latest | jq -r ".tag_name")"; \
-    fi; \
-    if [ -z "$codex_version" ] || [ "$codex_version" = "null" ]; then printf "Unable to determine Codex release version\n" >&2; exit 1; fi; \
-    tmp_tar="$(mktemp)"; \
-    url="https://github.com/openai/codex/releases/download/${codex_version}/codex-${codex_arch_suffix}.tar.gz"; \
-    printf "Downloading Codex CLI from %s\n" "$url"; \
-    curl -L --fail "$url" -o "$tmp_tar"; \
-    install_root="/opt/codex/${codex_version}"; \
-    rm -rf "$install_root"; \
-    mkdir -p "$install_root"; \
-    tar -xzf "$tmp_tar" -C "$install_root"; \
-    rm -f "$tmp_tar"; \
-    extracted_bin="$install_root/codex-${codex_arch_suffix}"; \
-    if [ ! -f "$extracted_bin" ]; then printf "Codex binary missing under %s\n" "$install_root" >&2; exit 1; fi; \
-    chmod 0755 "$extracted_bin"; \
-    mv "$extracted_bin" "$install_root/codex"; \
-    ln -sf "$install_root/codex" /usr/local/bin/codex; \
-'
-
 ### SETUP SCRIPTS ###
 
 COPY setup_universal.sh /opt/codex/setup_universal.sh

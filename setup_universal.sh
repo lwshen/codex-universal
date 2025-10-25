@@ -35,3 +35,9 @@ if [ -n "${CODEX_ENV_GO_VERSION}" ]; then
         mise use --global "go@${CODEX_ENV_GO_VERSION}"
     fi
 fi
+
+npm install --silent -g @openai/codex
+npm install --silent -g @anthropic-ai/claude-code
+
+echo "# Codex: $(codex --version)"
+echo "# Claude Code: $(claude --version)"
