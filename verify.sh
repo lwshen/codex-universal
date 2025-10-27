@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# Activate mise for language runtime management
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+eval "$(mise activate bash)"
+
 echo "Verifying language runtimes ..."
 
 echo "- Python:"
