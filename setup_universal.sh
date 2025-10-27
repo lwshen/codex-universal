@@ -39,5 +39,16 @@ fi
 npm install --silent -g @openai/codex
 npm install --silent -g @anthropic-ai/claude-code
 
+# Initialize Claude Code
+node --eval "
+    const homeDir = os.homedir();
+    const filePath = path.join(homeDir, '.claude.json');
+    if (fs.existsSync(filePath)) {
+        const content = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        fs.writeFileSync(filePath, JSON.stringify({ ...content, hasCompletedOnboarding: true }, null, 2), 'utf-8');
+    } else {
+        fs.writeFileSync(filePath, JSON.stringify({ hasCompletedOnboarding: true }), 'utf-8');
+    }"
+
 echo "# Codex: $(codex --version)"
 echo "# Claude Code: $(claude --version)"

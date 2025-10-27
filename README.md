@@ -29,7 +29,8 @@ docker run --rm -it \
     -e CODEX_ENV_PYTHON_VERSION=3.12 \
     -e CODEX_ENV_NODE_VERSION=20 \
     -e CODEX_ENV_GO_VERSION=1.24.3 \
-    -e AICODEMIRROR_API_KEY=$AICODEMIRROR_API_KEY \
+    -e ANTHROPIC_BASE_URL=$ANTHROPIC_BASE_URL \
+    -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $(pwd):/workspace/$(basename $(pwd)) -w /workspace/$(basename $(pwd)) \
     registry.cn-shanghai.aliyuncs.com/formirror/mirror:codex-docker
 ```
