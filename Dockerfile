@@ -2,10 +2,17 @@ FROM ubuntu:24.04
 
 ARG TARGETOS
 ARG TARGETARCH
+ARG CODEX_RUNTIME_USER=codex
+ARG CODEX_UID=1000
+ARG CODEX_GID=1000
 
 ENV LANG="C.UTF-8"
-ENV HOME=/root
+ENV CODEX_HOME=/opt/codex
+ENV CODEX_USER=${CODEX_RUNTIME_USER}
+ENV HOME=${CODEX_HOME}
 ENV DEBIAN_FRONTEND=noninteractive
+
+RUN install -d -m 0755 ${CODEX_HOME}
 
 ### BASE ###
 
@@ -109,7 +116,7 @@ ARG PYENV_VERSION=v2.6.10
 ARG PYTHON_VERSIONS="3.11.12 3.10 3.12 3.13 3.14"
 
 # Install pyenv
-ENV PYENV_ROOT=/root/.pyenv
+ENV PYENV_ROOT=${CODEX_HOME}/.pyenv
 ENV PATH=$PYENV_ROOT/bin:$PATH
 RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
     && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /etc/profile \
@@ -123,7 +130,7 @@ RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https
     && rm -rf "$PYENV_ROOT/cache"
 
 # Install pipx for common global package managers (e.g. poetry)
-ENV PIPX_BIN_DIR=/root/.local/bin
+ENV PIPX_BIN_DIR=${CODEX_HOME}/.local/bin
 ENV PATH=$PIPX_BIN_DIR:$PATH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pipx=1.4.* \
@@ -133,7 +140,7 @@ RUN apt-get update \
          "$pyv/bin/python" -m pip install --no-cache-dir --no-compile --upgrade pip && \
          "$pyv/bin/pip" install --no-cache-dir --no-compile ruff black mypy pyright isort pytest; \
        done \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf ${HOME}/.cache/pip ${HOME}/.cache/pipx
     
 # Reduce the verbosity of uv - impacts performance of stdout buffering
 ENV UV_NO_PROGRESS=1
@@ -143,14 +150,14 @@ ENV UV_NO_PROGRESS=1
 ARG NVM_VERSION=v0.40.2
 ARG NODE_VERSION=22
 
-ENV NVM_DIR=/root/.nvm
+ENV NVM_DIR=${CODEX_HOME}/.nvm
 # Corepack tries to do too much - disable some of its features:
 # https://github.com/nodejs/corepack/blob/main/README.md
 ENV COREPACK_DEFAULT_TO_LATEST=0
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 ENV COREPACK_ENABLE_AUTO_PIN=0
 ENV COREPACK_ENABLE_STRICT=0
-ENV NODE_PATH=/opt/codex/npm/node_modules
+ENV NODE_PATH=${CODEX_HOME}/npm/node_modules
 
 RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https://github.com/nvm-sh/nvm.git "$NVM_DIR" \
     && echo 'source $NVM_DIR/nvm.sh' >> /etc/profile \
@@ -168,7 +175,8 @@ RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https:/
 
 RUN . $NVM_DIR/nvm.sh \
     && nvm use "$NODE_VERSION" \
-    && install_root=/opt/codex/npm \
+    && npm install -g @openai/codex @anthropic-ai/claude-code \
+    && install_root=${CODEX_HOME}/npm \
     && mkdir -p "$install_root" \
     && cd "$install_root" \
     && npm install @openai/codex \
@@ -203,7 +211,7 @@ RUN JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" |
 ### C++ ###
 # gcc is already installed via apt-get above, so these are just additional linters, etc.
 RUN pipx install --pip-args="--no-cache-dir --no-compile" cpplint==2.0.* clang-tidy==20.1.* clang-format==20.1.* cmakelang==0.6.* \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf ${HOME}/.cache/pip ${HOME}/.cache/pipx
 
 ### BAZEL ###
 
@@ -249,5 +257,13 @@ RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
+
+RUN groupadd --gid ${CODEX_GID} ${CODEX_USER} \
+    && useradd --uid ${CODEX_UID} --gid ${CODEX_GID} --shell /bin/bash --home ${CODEX_HOME} --no-create-home ${CODEX_USER} \
+    && chown -R ${CODEX_USER}:${CODEX_USER} ${CODEX_HOME} \
+    && echo "${CODEX_USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${CODEX_USER} \
+    && chmod 0440 /etc/sudoers.d/${CODEX_USER}
+
+USER ${CODEX_USER}
 
 ENTRYPOINT  ["/opt/entrypoint.sh"]
