@@ -4,8 +4,19 @@ ARG TARGETOS
 ARG TARGETARCH
 
 ENV LANG="C.UTF-8"
-ENV HOME=/root
 ENV DEBIAN_FRONTEND=noninteractive
+
+### CREATE NON-ROOT USER ###
+
+ARG RUNNER_UID=1000
+ARG RUNNER_GID=1000
+
+RUN groupadd --gid $RUNNER_GID runner \
+    && useradd --uid $RUNNER_UID --gid $RUNNER_GID -m -s /bin/bash runner \
+    && echo 'runner ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+# Set HOME to runner's home directory
+ENV HOME=/home/runner
 
 ### BASE ###
 
@@ -84,9 +95,9 @@ RUN install -dm 0755 /etc/apt/keyrings \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends mise/stable \
     && rm -rf /var/lib/apt/lists/* \
     && echo 'eval "$(mise activate bash)"' >> /etc/profile \
-    && mise settings set experimental true \
-    && mise settings set override_tool_versions_filenames none \
-    && mise settings add idiomatic_version_file_enable_tools "[]"
+    && sudo -u runner mise settings set experimental true \
+    && sudo -u runner mise settings set override_tool_versions_filenames none \
+    && sudo -u runner mise settings add idiomatic_version_file_enable_tools "[]"
 
 ENV PATH=$HOME/.local/share/mise/shims:$PATH
 
@@ -109,7 +120,7 @@ ARG PYENV_VERSION=v2.6.10
 ARG PYTHON_VERSIONS="3.11.12 3.10 3.12 3.13 3.14"
 
 # Install pyenv
-ENV PYENV_ROOT=/root/.pyenv
+ENV PYENV_ROOT=/home/runner/.pyenv
 ENV PATH=$PYENV_ROOT/bin:$PATH
 RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
     && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /etc/profile \
@@ -120,20 +131,21 @@ RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https
     && make -C src \
     && pyenv install $PYTHON_VERSIONS \
     && pyenv global "${PYTHON_VERSIONS%% *}" \
-    && rm -rf "$PYENV_ROOT/cache"
+    && rm -rf "$PYENV_ROOT/cache" \
+    && chown -R runner:runner "$PYENV_ROOT"
 
 # Install pipx for common global package managers (e.g. poetry)
-ENV PIPX_BIN_DIR=/root/.local/bin
+ENV PIPX_BIN_DIR=/home/runner/.local/bin
 ENV PATH=$PIPX_BIN_DIR:$PATH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pipx=1.4.* \
     && rm -rf /var/lib/apt/lists/* \
-    && pipx install --pip-args="--no-cache-dir --no-compile" poetry==2.1.* uv==0.7.* \
+    && sudo -u runner pipx install --pip-args="--no-cache-dir --no-compile" poetry==2.1.* uv==0.7.* \
     && for pyv in "${PYENV_ROOT}/versions/"*; do \
          "$pyv/bin/python" -m pip install --no-cache-dir --no-compile --upgrade pip && \
          "$pyv/bin/pip" install --no-cache-dir --no-compile ruff black mypy pyright isort pytest; \
        done \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf /home/runner/.cache/pip /root/.cache/pip /home/runner/.cache/pipx
     
 # Reduce the verbosity of uv - impacts performance of stdout buffering
 ENV UV_NO_PROGRESS=1
@@ -143,7 +155,7 @@ ENV UV_NO_PROGRESS=1
 ARG NVM_VERSION=v0.40.2
 ARG NODE_VERSION=22
 
-ENV NVM_DIR=/root/.nvm
+ENV NVM_DIR=/home/runner/.nvm
 # Corepack tries to do too much - disable some of its features:
 # https://github.com/nodejs/corepack/blob/main/README.md
 ENV COREPACK_DEFAULT_TO_LATEST=0
@@ -153,7 +165,8 @@ ENV COREPACK_ENABLE_STRICT=0
 ENV NODE_PATH=/opt/codex/npm/node_modules
 
 RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https://github.com/nvm-sh/nvm.git "$NVM_DIR" \
-    && echo 'source $NVM_DIR/nvm.sh' >> /etc/profile \
+    && echo 'export NVM_DIR="$HOME/.nvm"' >> /etc/profile \
+    && echo '[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"' >> /etc/profile \
     && echo "prettier\neslint\ntypescript" > $NVM_DIR/default-packages \
     && . $NVM_DIR/nvm.sh \
     # The latest versions of npm aren't supported on node 18, so we install each set differently
@@ -164,7 +177,8 @@ RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https:/
     && nvm cache clear \
     && npm cache clean --force || true \
     && pnpm store prune || true \
-    && yarn cache clean || true
+    && yarn cache clean || true \
+    && chown -R runner:runner "$NVM_DIR"
 
 RUN . $NVM_DIR/nvm.sh \
     && nvm use "$NODE_VERSION" \
@@ -172,13 +186,14 @@ RUN . $NVM_DIR/nvm.sh \
     && mkdir -p "$install_root" \
     && cd "$install_root" \
     && npm install @openai/codex \
-    && npm cache clean --force || true
+    && npm cache clean --force || true \
+    && chown -R runner:runner "$install_root"
 
 ### BUN ###
 
 ARG BUN_VERSION=1.2.14
-RUN mise use --global "bun@${BUN_VERSION}" \
-    && mise cache clear || true \
+RUN sudo -u runner mise use --global "bun@${BUN_VERSION}" \
+    && sudo -u runner mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
 
 ### JAVA ###
@@ -191,19 +206,19 @@ ARG AMD_JAVA_VERSIONS="21 17 11"
 ARG ARM_JAVA_VERSIONS="21 17"
 
 RUN JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" || echo "$AMD_JAVA_VERSIONS" )" \
-    && for v in $JAVA_VERSIONS; do mise install "java@${v}"; done \
-    && mise install "gradle@${GRADLE_VERSION}" \
-    && mise install "maven@${MAVEN_VERSION}" \
-    && mise use --global "java@${JAVA_VERSIONS%% *}" \
-    && mise use --global "gradle@${GRADLE_VERSION}" \
-    && mise use --global "maven@${MAVEN_VERSION}" \
-    && mise cache clear || true \
+    && for v in $JAVA_VERSIONS; do sudo -u runner mise install "java@${v}"; done \
+    && sudo -u runner mise install "gradle@${GRADLE_VERSION}" \
+    && sudo -u runner mise install "maven@${MAVEN_VERSION}" \
+    && sudo -u runner mise use --global "java@${JAVA_VERSIONS%% *}" \
+    && sudo -u runner mise use --global "gradle@${GRADLE_VERSION}" \
+    && sudo -u runner mise use --global "maven@${MAVEN_VERSION}" \
+    && sudo -u runner mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
 
 ### C++ ###
 # gcc is already installed via apt-get above, so these are just additional linters, etc.
-RUN pipx install --pip-args="--no-cache-dir --no-compile" cpplint==2.0.* clang-tidy==20.1.* clang-format==20.1.* cmakelang==0.6.* \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+RUN sudo -u runner pipx install --pip-args="--no-cache-dir --no-compile" cpplint==2.0.* clang-tidy==20.1.* clang-format==20.1.* cmakelang==0.6.* \
+    && rm -rf /home/runner/.cache/pip /root/.cache/pip /home/runner/.cache/pipx
 
 ### BAZEL ###
 
@@ -220,19 +235,19 @@ ARG GOLANG_CI_LINT_VERSION=2.1.6
 
 # Go defaults GOROOT to /usr/local/go - we just need to update PATH
 ENV PATH=/usr/local/go/bin:$HOME/go/bin:$PATH
-RUN for v in $GO_VERSIONS; do mise install "go@${v}"; done \
-    && mise use --global "go@${GO_VERSIONS%% *}" \
-    && mise use --global "golangci-lint@${GOLANG_CI_LINT_VERSION}" \
-    && mise cache clear || true \
+RUN for v in $GO_VERSIONS; do sudo -u runner mise install "go@${v}"; done \
+    && sudo -u runner mise use --global "go@${GO_VERSIONS%% *}" \
+    && sudo -u runner mise use --global "golangci-lint@${GOLANG_CI_LINT_VERSION}" \
+    && sudo -u runner mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
 
 ### ELIXIR ###
 
 ARG ERLANG_VERSION=27.1.2
 ARG ELIXIR_VERSION=1.18.3
-RUN mise install "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
-    && mise use --global "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
-    && mise cache clear || true \
+RUN sudo -u runner mise install "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
+    && sudo -u runner mise use --global "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
+    && sudo -u runner mise cache clear || true \
     && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
 
 ### SETUP SCRIPTS ###
@@ -243,11 +258,15 @@ RUN chmod +x /opt/codex/setup_universal.sh
 ### VERIFICATION SCRIPT ###
 
 COPY verify.sh /opt/verify.sh
-RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
+RUN chmod +x /opt/verify.sh && sudo -u runner bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 
 ### ENTRYPOINT ###
 
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
+
+# Switch to non-root user
+USER runner
+WORKDIR /home/runner
 
 ENTRYPOINT  ["/opt/entrypoint.sh"]
