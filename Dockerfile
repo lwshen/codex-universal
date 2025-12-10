@@ -254,12 +254,12 @@ RUN chmod +x /opt/entrypoint.sh
 ARG USERNAME=codex
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID --home-dir /root --shell /bin/bash --no-create-home $USERNAME \
+RUN if ! getent group "$USERNAME" >/dev/null; then groupadd --gid "$USER_GID" -o "$USERNAME"; fi \
+    && if ! id -u "$USERNAME" >/dev/null 2>&1; then useradd --uid "$USER_UID" --gid "$USER_GID" --home-dir /root --shell /bin/bash --no-create-home "$USERNAME"; fi \
     && mkdir -p /etc/sudoers.d \
     && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
-    && chown -R $USERNAME:$USERNAME /root
+    && chown -R $USERNAME:$USER_GID /root
 
 USER $USERNAME
 
