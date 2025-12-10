@@ -18,6 +18,7 @@ RUN apt-get update \
         curl=8.5.* \
         default-libmysqlclient-dev=1.1.* \
         dnsutils=1:9.18.* \
+        fd-find=9.0.* \
         gettext=0.21-* \
         git=1:2.43.* \
         git-lfs=3.4.* \
@@ -40,7 +41,7 @@ RUN apt-get update \
         liblzma-dev=5.6.* \
         libncurses-dev=6.4+20240113-* \
         libnss3-dev=2:3.98-* \
-        libpq-dev=16.* \
+        libpq-dev=16.11-* \
         libpsl-dev=0.21.* \
         libpython3-dev=3.12.* \
         libreadline-dev=8.2-* \
@@ -64,6 +65,7 @@ RUN apt-get update \
         swig3.0=3.0.* \
         tk-dev=8.6.* \
         tzdata=2025b-* \
+        universal-ctags=5.9.* \
         unixodbc-dev=2.3.* \
         unzip=6.0-* \
         uuid-dev=2.39.* \
@@ -160,6 +162,7 @@ RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https:/
     && nvm install 18 && nvm use 18 && npm install -g npm@10.9 pnpm@10.12 && corepack enable && corepack install -g yarn \
     && nvm install 20 && nvm use 20 && npm install -g npm@11.4 pnpm@10.12 && corepack enable && corepack install -g yarn \
     && nvm install 22 && nvm use 22 && npm install -g npm@11.4 pnpm@10.12 && corepack enable && corepack install -g yarn \
+    && nvm install 24 && nvm use 24 && npm install -g npm@11.4 pnpm@10.12 && corepack enable && corepack install -g yarn \
     && nvm alias default "$NODE_VERSION" \
     && nvm cache clear \
     && npm cache clean --force || true \
