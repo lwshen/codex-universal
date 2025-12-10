@@ -255,7 +255,11 @@ ARG USERNAME=codex
 ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 RUN if ! getent group "$USERNAME" >/dev/null; then groupadd --gid "$USER_GID" -o "$USERNAME"; fi \
-    && if ! id -u "$USERNAME" >/dev/null 2>&1; then useradd --uid "$USER_UID" --gid "$USER_GID" --home-dir /root --shell /bin/bash --no-create-home "$USERNAME"; fi \
+    && if ! id -u "$USERNAME" >/dev/null 2>&1; then \ 
+        useradd_opts=""; \ 
+        if getent passwd "$USER_UID" >/dev/null; then useradd_opts="-o"; fi; \ 
+        useradd $useradd_opts --uid "$USER_UID" --gid "$USER_GID" --home-dir /root --shell /bin/bash --no-create-home "$USERNAME"; \ 
+       fi \
     && mkdir -p /etc/sudoers.d \
     && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$USERNAME \
     && chmod 0440 /etc/sudoers.d/$USERNAME \
