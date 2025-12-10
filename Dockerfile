@@ -76,7 +76,9 @@ RUN apt-get update \
 
 # Create non-root user
 RUN groupadd -r codex && useradd -r -g codex -m -d /home/codex -s /bin/bash codex \
-    && echo 'codex ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+    && echo 'codex ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
+    && mkdir -p /home/codex/.cache /home/codex/.config \
+    && chown -R codex:codex /home/codex
 
 ### MISE ###
 
@@ -261,6 +263,9 @@ RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
+
+# Ensure all home directory files are owned by codex user
+RUN chown -R codex:codex /home/codex
 
 # Switch to non-root user
 USER codex
