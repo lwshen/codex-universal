@@ -258,9 +258,23 @@ COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
 
 ### NON-ROOT USER ###
-RUN groupadd --gid ${USER_GID} ${USERNAME} \
-    && useradd --uid ${USER_UID} --gid ${USER_GID} --home "$HOME" --shell /bin/bash --no-create-home ${USERNAME} \
-    && chown -R ${USERNAME}:${USERNAME} "$HOME"
+RUN set -eux; \
+    mkdir -p "$HOME"; \
+    if ! getent group "${USERNAME}" >/dev/null 2>&1; then \
+        if getent group "${USER_GID}" >/dev/null 2>&1; then \
+            groupadd "${USERNAME}"; \
+        else \
+            groupadd --gid "${USER_GID}" "${USERNAME}"; \
+        fi; \
+    fi; \
+    if ! id -u "${USERNAME}" >/dev/null 2>&1; then \
+        if getent passwd "${USER_UID}" >/dev/null 2>&1; then \
+            useradd --gid "${USERNAME}" --home "$HOME" --shell /bin/bash --no-create-home "${USERNAME}"; \
+        else \
+            useradd --uid "${USER_UID}" --gid "${USERNAME}" --home "$HOME" --shell /bin/bash --no-create-home "${USERNAME}"; \
+        fi; \
+    fi; \
+    chown -R "${USERNAME}:${USERNAME}" "$HOME"
 
 WORKDIR $HOME
 USER ${USERNAME}
