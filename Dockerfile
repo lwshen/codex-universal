@@ -216,7 +216,9 @@ RUN pipx install --pip-args="--no-cache-dir --no-compile" cpplint==2.0.* clang-t
 
 ARG BAZELISK_VERSION=v1.26.0
 
-RUN curl -L --fail https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-${TARGETOS}-${TARGETARCH} -o /usr/local/bin/bazelisk \
+RUN curl -L --fail --retry 5 --retry-all-errors --retry-delay 5 \
+        "https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-${TARGETOS}-${TARGETARCH}" \
+        -o /usr/local/bin/bazelisk \
     && chmod +x /usr/local/bin/bazelisk \
     && ln -s /usr/local/bin/bazelisk /usr/local/bin/bazel
 
