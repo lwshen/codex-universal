@@ -6,9 +6,8 @@ ARG TARGETARCH
 ENV LANG="C.UTF-8"
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Create non-root user
+# Create non-root user (before installing sudo)
 RUN groupadd -r runner && useradd -r -g runner -m -s /bin/bash runner \
-    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
     && mkdir -p /workspace && chown -R runner:runner /workspace
 
 ENV HOME=/home/runner
@@ -78,7 +77,8 @@ RUN apt-get update \
         zip=3.0-* \
         zlib1g=1:1.3.* \
         zlib1g-dev=1:1.3.* \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 ### MISE ###
 
