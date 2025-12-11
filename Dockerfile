@@ -4,8 +4,13 @@ ARG TARGETOS
 ARG TARGETARCH
 
 ENV LANG="C.UTF-8"
-ENV HOME=/root
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Create non-root user (before installing sudo)
+RUN groupadd -r runner && useradd -r -g runner -m -s /bin/bash runner \
+    && mkdir -p /workspace && chown -R runner:runner /workspace
+
+ENV HOME=/home/runner
 
 ### BASE ###
 
@@ -74,7 +79,8 @@ RUN apt-get update \
         zip=3.0-* \
         zlib1g=1:1.3.* \
         zlib1g-dev=1:1.3.* \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 ### MISE ###
 
@@ -111,7 +117,7 @@ ARG PYENV_VERSION=v2.6.10
 ARG PYTHON_VERSIONS="3.11.12 3.10 3.12 3.13 3.14"
 
 # Install pyenv
-ENV PYENV_ROOT=/root/.pyenv
+ENV PYENV_ROOT=$HOME/.pyenv
 ENV PATH=$PYENV_ROOT/bin:$PATH
 RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
     && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /etc/profile \
@@ -122,10 +128,11 @@ RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https
     && make -C src \
     && pyenv install $PYTHON_VERSIONS \
     && pyenv global "${PYTHON_VERSIONS%% *}" \
-    && rm -rf "$PYENV_ROOT/cache"
+    && rm -rf "$PYENV_ROOT/cache" \
+    && chown -R runner:runner "$HOME"
 
 # Install pipx for common global package managers (e.g. poetry)
-ENV PIPX_BIN_DIR=/root/.local/bin
+ENV PIPX_BIN_DIR=$HOME/.local/bin
 ENV PATH=$PIPX_BIN_DIR:$PATH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pipx=1.4.* \
@@ -135,7 +142,8 @@ RUN apt-get update \
          "$pyv/bin/python" -m pip install --no-cache-dir --no-compile --upgrade pip && \
          "$pyv/bin/pip" install --no-cache-dir --no-compile ruff black mypy pyright isort pytest; \
        done \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf $HOME/.cache/pip ~/.cache/pip ~/.cache/pipx \
+    && chown -R runner:runner "$HOME"
     
 # Reduce the verbosity of uv - impacts performance of stdout buffering
 ENV UV_NO_PROGRESS=1
@@ -145,7 +153,7 @@ ENV UV_NO_PROGRESS=1
 ARG NVM_VERSION=v0.40.2
 ARG NODE_VERSION=22
 
-ENV NVM_DIR=/root/.nvm
+ENV NVM_DIR=$HOME/.nvm
 # Corepack tries to do too much - disable some of its features:
 # https://github.com/nodejs/corepack/blob/main/README.md
 ENV COREPACK_DEFAULT_TO_LATEST=0
@@ -167,7 +175,8 @@ RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https:/
     && nvm cache clear \
     && npm cache clean --force || true \
     && pnpm store prune || true \
-    && yarn cache clean || true
+    && yarn cache clean || true \
+    && chown -R runner:runner "$HOME"
 
 RUN . $NVM_DIR/nvm.sh \
     && nvm use "$NODE_VERSION" \
@@ -175,14 +184,16 @@ RUN . $NVM_DIR/nvm.sh \
     && mkdir -p "$install_root" \
     && cd "$install_root" \
     && npm install @openai/codex \
-    && npm cache clean --force || true
+    && npm cache clean --force || true \
+    && chown -R runner:runner /opt/codex
 
 ### BUN ###
 
 ARG BUN_VERSION=1.2.14
 RUN mise use --global "bun@${BUN_VERSION}" \
     && mise cache clear || true \
-    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
+    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads" \
+    && chown -R runner:runner "$HOME"
 
 ### JAVA ###
 
@@ -201,12 +212,14 @@ RUN JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" |
     && mise use --global "gradle@${GRADLE_VERSION}" \
     && mise use --global "maven@${MAVEN_VERSION}" \
     && mise cache clear || true \
-    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
+    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads" \
+    && chown -R runner:runner "$HOME"
 
 ### C++ ###
 # gcc is already installed via apt-get above, so these are just additional linters, etc.
 RUN pipx install --pip-args="--no-cache-dir --no-compile" cpplint==2.0.* clang-tidy==20.1.* clang-format==20.1.* cmakelang==0.6.* \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf $HOME/.cache/pip ~/.cache/pip ~/.cache/pipx \
+    && chown -R runner:runner "$HOME"
 
 ### BAZEL ###
 
@@ -227,7 +240,8 @@ RUN for v in $GO_VERSIONS; do mise install "go@${v}"; done \
     && mise use --global "go@${GO_VERSIONS%% *}" \
     && mise use --global "golangci-lint@${GOLANG_CI_LINT_VERSION}" \
     && mise cache clear || true \
-    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
+    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads" \
+    && chown -R runner:runner "$HOME"
 
 ### ELIXIR ###
 
@@ -236,21 +250,30 @@ ARG ELIXIR_VERSION=1.18.3
 RUN mise install "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
     && mise use --global "erlang@${ERLANG_VERSION}" "elixir@${ELIXIR_VERSION}-otp-27" \
     && mise cache clear || true \
-    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
+    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads" \
+    && chown -R runner:runner "$HOME"
 
 ### SETUP SCRIPTS ###
 
 COPY setup_universal.sh /opt/codex/setup_universal.sh
-RUN chmod +x /opt/codex/setup_universal.sh
+RUN chmod +x /opt/codex/setup_universal.sh \
+    && chown -R runner:runner /opt/codex
 
 ### VERIFICATION SCRIPT ###
 
 COPY verify.sh /opt/verify.sh
-RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
+RUN chmod +x /opt/verify.sh \
+    && chown runner:runner /opt/verify.sh \
+    && su runner -c "bash -lc 'TARGETARCH=$TARGETARCH /opt/verify.sh'"
 
 ### ENTRYPOINT ###
 
 COPY entrypoint.sh /opt/entrypoint.sh
-RUN chmod +x /opt/entrypoint.sh
+RUN chmod +x /opt/entrypoint.sh \
+    && chown runner:runner /opt/entrypoint.sh
+
+# Switch to non-root user
+USER runner
+WORKDIR /workspace
 
 ENTRYPOINT  ["/opt/entrypoint.sh"]
