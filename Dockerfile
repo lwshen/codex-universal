@@ -7,7 +7,9 @@ ENV LANG="C.UTF-8"
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Create non-root user
-RUN groupadd -r runner && useradd -r -g runner -u 1000 -m -s /bin/bash runner \
+RUN userdel -r ubuntu || true \
+    && groupadd -r runner \
+    && useradd -r -g runner -u 1000 -m -s /bin/bash runner \
     && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 ENV HOME=/home/runner
