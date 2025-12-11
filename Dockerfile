@@ -4,8 +4,10 @@ ARG TARGETOS
 ARG TARGETARCH
 
 ENV LANG="C.UTF-8"
-ENV HOME=/root
+ENV HOME=/home/codex
 ENV DEBIAN_FRONTEND=noninteractive
+
+RUN mkdir -p "$HOME"
 
 ### BASE ###
 
@@ -111,7 +113,7 @@ ARG PYENV_VERSION=v2.6.10
 ARG PYTHON_VERSIONS="3.11.12 3.10 3.12 3.13 3.14"
 
 # Install pyenv
-ENV PYENV_ROOT=/root/.pyenv
+ENV PYENV_ROOT=$HOME/.pyenv
 ENV PATH=$PYENV_ROOT/bin:$PATH
 RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
     && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /etc/profile \
@@ -125,7 +127,7 @@ RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https
     && rm -rf "$PYENV_ROOT/cache"
 
 # Install pipx for common global package managers (e.g. poetry)
-ENV PIPX_BIN_DIR=/root/.local/bin
+ENV PIPX_BIN_DIR=$HOME/.local/bin
 ENV PATH=$PIPX_BIN_DIR:$PATH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pipx=1.4.* \
@@ -135,7 +137,7 @@ RUN apt-get update \
          "$pyv/bin/python" -m pip install --no-cache-dir --no-compile --upgrade pip && \
          "$pyv/bin/pip" install --no-cache-dir --no-compile ruff black mypy pyright isort pytest; \
        done \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf "$HOME/.cache/pip" "$HOME/.cache/pipx"
     
 # Reduce the verbosity of uv - impacts performance of stdout buffering
 ENV UV_NO_PROGRESS=1
@@ -145,7 +147,7 @@ ENV UV_NO_PROGRESS=1
 ARG NVM_VERSION=v0.40.2
 ARG NODE_VERSION=22
 
-ENV NVM_DIR=/root/.nvm
+ENV NVM_DIR=$HOME/.nvm
 # Corepack tries to do too much - disable some of its features:
 # https://github.com/nodejs/corepack/blob/main/README.md
 ENV COREPACK_DEFAULT_TO_LATEST=0
@@ -206,7 +208,7 @@ RUN JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" |
 ### C++ ###
 # gcc is already installed via apt-get above, so these are just additional linters, etc.
 RUN pipx install --pip-args="--no-cache-dir --no-compile" cpplint==2.0.* clang-tidy==20.1.* clang-format==20.1.* cmakelang==0.6.* \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf "$HOME/.cache/pip" "$HOME/.cache/pipx"
 
 ### BAZEL ###
 
@@ -248,9 +250,18 @@ RUN chmod +x /opt/codex/setup_universal.sh
 COPY verify.sh /opt/verify.sh
 RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 
+### NON-ROOT USER ###
+
+RUN groupadd --gid 1000 codex \
+    && useradd --uid 1000 --gid codex --home-dir "$HOME" --shell /bin/bash --no-create-home codex \
+    && chown -R codex:codex "$HOME"
+
 ### ENTRYPOINT ###
 
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
+
+USER codex
+WORKDIR /home/codex
 
 ENTRYPOINT  ["/opt/entrypoint.sh"]
