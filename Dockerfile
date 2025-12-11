@@ -11,7 +11,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ARG RUNNER_UID=1000
 ARG RUNNER_GID=1000
 
-RUN groupadd --gid $RUNNER_GID runner \
+# Remove existing user/group with UID/GID 1000 if present (e.g., ubuntu user in base image)
+RUN if getent passwd $RUNNER_UID > /dev/null 2>&1; then userdel -r $(getent passwd $RUNNER_UID | cut -d: -f1); fi \
+    && if getent group $RUNNER_GID > /dev/null 2>&1; then groupdel $(getent group $RUNNER_GID | cut -d: -f1); fi \
+    && groupadd --gid $RUNNER_GID runner \
     && useradd --uid $RUNNER_UID --gid $RUNNER_GID -m -s /bin/bash runner \
     && echo 'runner ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
