@@ -263,7 +263,10 @@ RUN chmod +x /opt/codex/setup_universal.sh
 ### VERIFICATION SCRIPT ###
 
 COPY verify.sh /opt/verify.sh
-RUN chmod +x /opt/verify.sh && sudo -u runner bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
+# Ensure runner owns their entire home directory after all installations
+RUN chmod +x /opt/verify.sh \
+    && chown -R runner:runner /home/runner \
+    && sudo -u runner bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 
 ### ENTRYPOINT ###
 
