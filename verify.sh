@@ -1,6 +1,14 @@
-#!/bin/bash --login
+#!/bin/bash
 
 set -euo pipefail
+
+export CODEX_HOME="${CODEX_HOME:-/opt/codex}"
+export HOME="${CODEX_HOME}"
+
+if [ -f /etc/profile ]; then
+    # shellcheck disable=SC1091
+    source /etc/profile
+fi
 
 # Activate mise for language runtime management
 export PATH="$HOME/.local/share/mise/shims:$PATH"
