@@ -6,13 +6,8 @@ ARG TARGETARCH
 ENV LANG="C.UTF-8"
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Create non-root user
-RUN userdel -r ubuntu || true \
-    && groupadd -r runner \
-    && useradd -r -g runner -u 1000 -m -s /bin/bash runner \
-    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-ENV HOME=/home/runner
+# Remove default user to free up UID 1000
+RUN userdel -r ubuntu || true
 
 ### BASE ###
 
@@ -80,6 +75,13 @@ RUN apt-get update \
         zlib1g=1:1.3.* \
         zlib1g-dev=1:1.3.* \
     && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r runner \
+    && useradd -r -g runner -u 1000 -m -s /bin/bash runner \
+    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+ENV HOME=/home/runner
 
 ### MISE ###
 
