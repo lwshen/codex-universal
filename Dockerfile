@@ -112,13 +112,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ### PYTHON ###
 
-ARG PYENV_VERSION=v2.6.10
+ARG PYENV_TAG=v2.6.10
 ARG PYTHON_VERSIONS="3.11.12 3.10 3.12 3.13 3.14"
 
 # Install pyenv
 ENV PYENV_ROOT=${CODEX_HOME}/.pyenv
 ENV PATH=$PYENV_ROOT/bin:$PATH
-RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
+RUN git -c advice.detachedHead=0 clone --branch "$PYENV_TAG" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
     && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /etc/profile \
     && echo 'export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"' >> /etc/profile \
     && echo 'eval "$(pyenv init - bash)"' >> /etc/profile \
