@@ -89,7 +89,7 @@ RUN install -dm 0755 /etc/apt/keyrings \
     && curl -fsSL https://mise.jdx.dev/gpg-key.pub | gpg --batch --yes --dearmor -o /etc/apt/keyrings/mise-archive-keyring.gpg \
     && chmod 0644 /etc/apt/keyrings/mise-archive-keyring.gpg \
     && echo "deb [signed-by=/etc/apt/keyrings/mise-archive-keyring.gpg] https://mise.jdx.dev/deb stable main" > /etc/apt/sources.list.d/mise.list \
-    && apt-get update \
+    && (apt-get update || (sleep 10 && apt-get update) || true) \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends mise/stable \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p $HOME/.local/share/mise \
