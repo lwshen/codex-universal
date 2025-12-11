@@ -83,7 +83,9 @@ RUN if getent passwd $RUNNER_UID > /dev/null 2>&1; then userdel -r $(getent pass
     && if getent group $RUNNER_GID > /dev/null 2>&1; then groupdel $(getent group $RUNNER_GID | cut -d: -f1); fi \
     && groupadd --gid $RUNNER_GID runner \
     && useradd --uid $RUNNER_UID --gid $RUNNER_GID -m -s /bin/bash runner \
-    && echo 'runner ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+    && echo 'runner ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers \
+    && mkdir -p /home/runner/.cache /home/runner/.local/share /home/runner/.local/bin \
+    && chown -R runner:runner /home/runner
 
 # Set HOME to runner's home directory
 ENV HOME=/home/runner
