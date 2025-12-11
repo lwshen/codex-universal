@@ -40,7 +40,7 @@ RUN apt-get update \
         liblzma-dev=5.6.* \
         libncurses-dev=6.4+20240113-* \
         libnss3-dev=2:3.98-* \
-        libpq-dev=16.10-* \
+        libpq-dev=16.11-* \
         libpsl-dev=0.21.* \
         libpython3-dev=3.12.* \
         libreadline-dev=8.2-* \
@@ -73,6 +73,13 @@ RUN apt-get update \
         zlib1g=1:1.3.* \
         zlib1g-dev=1:1.3.* \
     && rm -rf /var/lib/apt/lists/*
+
+### USER SETUP ###
+
+RUN useradd -m -s /bin/bash -G sudo runner \
+    && echo "runner ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+
+ENV HOME=/home/runner
 
 ### MISE ###
 
@@ -109,7 +116,7 @@ ARG PYENV_VERSION=v2.6.10
 ARG PYTHON_VERSIONS="3.11.12 3.10 3.12 3.13 3.14"
 
 # Install pyenv
-ENV PYENV_ROOT=/root/.pyenv
+ENV PYENV_ROOT=$HOME/.pyenv
 ENV PATH=$PYENV_ROOT/bin:$PATH
 RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
     && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /etc/profile \
@@ -123,7 +130,7 @@ RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https
     && rm -rf "$PYENV_ROOT/cache"
 
 # Install pipx for common global package managers (e.g. poetry)
-ENV PIPX_BIN_DIR=/root/.local/bin
+ENV PIPX_BIN_DIR=$HOME/.local/bin
 ENV PATH=$PIPX_BIN_DIR:$PATH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pipx=1.4.* \
@@ -133,7 +140,7 @@ RUN apt-get update \
          "$pyv/bin/python" -m pip install --no-cache-dir --no-compile --upgrade pip && \
          "$pyv/bin/pip" install --no-cache-dir --no-compile ruff black mypy pyright isort pytest; \
        done \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf $HOME/.cache/pip ~/.cache/pip ~/.cache/pipx
     
 # Reduce the verbosity of uv - impacts performance of stdout buffering
 ENV UV_NO_PROGRESS=1
@@ -143,7 +150,7 @@ ENV UV_NO_PROGRESS=1
 ARG NVM_VERSION=v0.40.2
 ARG NODE_VERSION=22
 
-ENV NVM_DIR=/root/.nvm
+ENV NVM_DIR=$HOME/.nvm
 # Corepack tries to do too much - disable some of its features:
 # https://github.com/nodejs/corepack/blob/main/README.md
 ENV COREPACK_DEFAULT_TO_LATEST=0
@@ -203,7 +210,7 @@ RUN JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" |
 ### C++ ###
 # gcc is already installed via apt-get above, so these are just additional linters, etc.
 RUN pipx install --pip-args="--no-cache-dir --no-compile" cpplint==2.0.* clang-tidy==20.1.* clang-format==20.1.* cmakelang==0.6.* \
-    && rm -rf /root/.cache/pip ~/.cache/pip ~/.cache/pipx
+    && rm -rf $HOME/.cache/pip ~/.cache/pip ~/.cache/pipx
 
 ### BAZEL ###
 
@@ -249,5 +256,14 @@ RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 
 COPY entrypoint.sh /opt/entrypoint.sh
 RUN chmod +x /opt/entrypoint.sh
+
+### CHANGE OWNERSHIP TO RUNNER USER ###
+
+RUN chown -R runner:runner $HOME
+
+### SWITCH TO NON-ROOT USER ###
+
+USER runner
+WORKDIR $HOME
 
 ENTRYPOINT  ["/opt/entrypoint.sh"]
