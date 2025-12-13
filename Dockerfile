@@ -253,25 +253,9 @@ RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 ### NON-ROOT USER ###
 
 RUN set -eux; \
-    CODENAME="codex"; \
-    TARGET_UID=1000; \
-    TARGET_GID=1000; \
-    if getent group "$CODENAME" >/dev/null; then \
-        true; \
-    elif ! getent group "$TARGET_GID" >/dev/null; then \
-        groupadd --gid "$TARGET_GID" "$CODENAME"; \
-    else \
-        groupadd "$CODENAME"; \
-    fi; \
-    if id -u "$CODENAME" >/dev/null 2>&1; then \
-        usermod --home /home/codex --shell /bin/bash "$CODENAME"; \
-    elif ! getent passwd "$TARGET_UID" >/dev/null; then \
-        useradd --uid "$TARGET_UID" --gid "$CODENAME" --home-dir /home/codex --shell /bin/bash --no-create-home "$CODENAME"; \
-    else \
-        useradd --gid "$CODENAME" --home-dir /home/codex --shell /bin/bash --no-create-home "$CODENAME"; \
-    fi; \
-    mkdir -p /home/codex; \
-    chown -R "$CODENAME":"$CODENAME" /home/codex
+    groupadd codex; \
+    useradd --create-home --home-dir /home/codex --shell /bin/bash --gid codex codex; \
+    chown -R codex:codex /home/codex
 
 ### ENTRYPOINT ###
 
