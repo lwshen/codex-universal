@@ -173,11 +173,13 @@ RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https:/
 
 RUN . $NVM_DIR/nvm.sh \
     && nvm use "$NODE_VERSION" \
+    && npm install -g @openai/codex @anthropic-ai/claude-code \
     && install_root=/opt/codex/npm \
     && mkdir -p "$install_root" \
     && cd "$install_root" \
-    && npm install @openai/codex \
-    && npm cache clean --force || true
+    && npm install @openai/codex @anthropic-ai/claude-code \
+    && npm cache clean --force || true \
+    && node --eval "const fs = require('fs'); const os = require('os'); const path = require('path'); const filePath = path.join(os.homedir(), '.claude.json'); const content = fs.existsSync(filePath) ? JSON.parse(fs.readFileSync(filePath, 'utf-8')) : {}; content.hasCompletedOnboarding = true; fs.writeFileSync(filePath, JSON.stringify(content, null, 2));"
 
 ### BUN ###
 
