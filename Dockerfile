@@ -179,6 +179,26 @@ RUN . $NVM_DIR/nvm.sh \
     && npm install @openai/codex \
     && npm cache clean --force || true
 
+### CODEX & CLAUDE CODE ###
+
+RUN . $NVM_DIR/nvm.sh \
+    && nvm use "$NODE_VERSION" \
+    && npm install -g @openai/codex \
+    && npm install -g @anthropic-ai/claude-code \
+    && node -e " \
+        const fs = require('fs'); \
+        const path = require('path'); \
+        const os = require('os'); \
+        const homeDir = os.homedir(); \
+        const filePath = path.join(homeDir, '.claude.json'); \
+        if (fs.existsSync(filePath)) { \
+            const content = JSON.parse(fs.readFileSync(filePath, 'utf-8')); \
+            fs.writeFileSync(filePath, JSON.stringify({ ...content, hasCompletedOnboarding: true }, null, 2), 'utf-8'); \
+        } else { \
+            fs.writeFileSync(filePath, JSON.stringify({ hasCompletedOnboarding: true }), 'utf-8'); \
+        }" \
+    && npm cache clean --force || true
+
 ### BUN ###
 
 ARG BUN_VERSION=1.2.14
