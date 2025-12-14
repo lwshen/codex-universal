@@ -20,6 +20,8 @@ for version in "18" "20" "22"; do
     pnpm --version
     yarn --version
     npm ls -g
+    codex --version
+    claude --version
 done
 
 echo "- Bun:"
@@ -39,7 +41,8 @@ elixir --version
 erl -version
 erl -eval 'erlang:display(erlang:system_info(otp_release)), halt().' -noshell
 
-# echo "- Codex:"
-# codex --version
+echo "- Codex / Claude Code:"
+codex --version
+claude --version
 
 echo "All language runtimes detected successfully."

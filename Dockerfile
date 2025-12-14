@@ -154,7 +154,7 @@ ENV COREPACK_DEFAULT_TO_LATEST=0
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 ENV COREPACK_ENABLE_AUTO_PIN=0
 ENV COREPACK_ENABLE_STRICT=0
-ENV NODE_PATH=/opt/codex/npm/node_modules
+ENV NODE_PATH=/opt/codex/npm/lib/node_modules
 
 RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https://github.com/nvm-sh/nvm.git "$NVM_DIR" \
     && echo 'source $NVM_DIR/nvm.sh' >> /etc/profile \
@@ -176,8 +176,10 @@ RUN . $NVM_DIR/nvm.sh \
     && install_root=/opt/codex/npm \
     && mkdir -p "$install_root" \
     && cd "$install_root" \
-    && npm install @openai/codex \
+    && npm install --silent -g --prefix "$install_root" @openai/codex @anthropic-ai/claude-code \
     && npm cache clean --force || true
+
+ENV PATH=/opt/codex/npm/bin:$PATH
 
 ### BUN ###
 
