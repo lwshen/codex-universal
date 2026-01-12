@@ -77,6 +77,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         zip=3.0-* \
         zlib1g=1:1.3.* \
         zlib1g-dev=1:1.3.* \
+        fd-find=9.0.* \
+        universal-ctags=5.9.* \
     && rm -rf /var/lib/apt/lists/*
 
 ### MISE ###
