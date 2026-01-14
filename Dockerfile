@@ -118,13 +118,12 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
 ### PYTHON ###
 
-ARG PYENV_VERSION=v2.6.10
-ARG PYTHON_VERSIONS="3.10 3.11 3.12 3.13 3.14"
+ARG PYTHON_VERSIONS="3.14 3.13 3.12 3.11 3.10"
 
 # Install pyenv
 ENV PYENV_ROOT=/root/.pyenv
 ENV PATH=$PYENV_ROOT/bin:$PATH
-RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
+RUN git -c advice.detachedHead=0 clone --depth 1 https://github.com/pyenv/pyenv.git "$PYENV_ROOT" \
     && echo 'export PYENV_ROOT="$HOME/.pyenv"' >> /etc/profile \
     && echo 'export PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"' >> /etc/profile \
     && echo 'eval "$(pyenv init - bash)"' >> /etc/profile \
@@ -132,7 +131,6 @@ RUN git -c advice.detachedHead=0 clone --branch "$PYENV_VERSION" --depth 1 https
     && src/configure \
     && make -C src \
     && pyenv install $PYTHON_VERSIONS \
-    && pyenv global "${PYTHON_VERSIONS%% *}" \
     && rm -rf "$PYENV_ROOT/cache"
 
 # Install pipx for common global package managers (e.g. poetry)
@@ -238,7 +236,7 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
 
 ### RUBY ###
 
-ARG RUBY_VERSIONS="3.2.3 3.3.8 3.4.4"
+ARG RUBY_VERSIONS="3.4.4 3.3.8 3.2.3"
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/root/.cache/mise \
@@ -326,7 +324,16 @@ RUN chmod +x /opt/codex/setup_universal.sh
 ### VERIFICATION SCRIPT ###
 
 COPY verify.sh /opt/verify.sh
-RUN chmod +x /opt/verify.sh && bash -lc "/opt/verify.sh"
+RUN chmod +x /opt/verify.sh \
+    && PYTHON_VERSIONS="$PYTHON_VERSIONS" \
+        NODE_VERSIONS="24 22 20 18" \
+        RUST_VERSIONS="$RUST_VERSIONS" \
+        GO_VERSIONS="$GO_VERSIONS" \
+        SWIFT_VERSIONS="$SWIFT_VERSIONS" \
+        RUBY_VERSIONS="$RUBY_VERSIONS" \
+        PHP_VERSIONS="$PHP_VERSIONS" \
+        JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" || echo "$AMD_JAVA_VERSIONS" )" \
+        "/opt/verify.sh"
 
 ### ENTRYPOINT ###
 

@@ -22,6 +22,7 @@ echo "Configuring language runtimes..."
 if [ -n "${CODEX_ENV_PYTHON_VERSION}" ]; then
     echo "# Python: ${CODEX_ENV_PYTHON_VERSION}"
     pyenv global "${CODEX_ENV_PYTHON_VERSION}"
+    python3 --version
 fi
 
 if [ -n "${CODEX_ENV_NODE_VERSION}" ]; then
@@ -29,7 +30,7 @@ if [ -n "${CODEX_ENV_NODE_VERSION}" ]; then
     echo "# Node.js: v${CODEX_ENV_NODE_VERSION} (default: ${current})"
     if [ "${current}" != "v${CODEX_ENV_NODE_VERSION}" ]; then
         nvm alias default "${CODEX_ENV_NODE_VERSION}"
-        nvm use "${CODEX_ENV_NODE_VERSION}"
+        nvm use --save "${CODEX_ENV_NODE_VERSION}"
         corepack enable
     fi
 fi
@@ -39,6 +40,7 @@ if [ -n "${CODEX_ENV_RUBY_VERSION}" ]; then
     echo "# Ruby: ${CODEX_ENV_RUBY_VERSION} (default: ${current})"
     if [ "${current}" != "${CODEX_ENV_RUBY_VERSION}" ]; then
         mise use --global "ruby@${CODEX_ENV_RUBY_VERSION}"
+        ruby --version
     fi
 fi
 
@@ -47,6 +49,7 @@ if [ -n "${CODEX_ENV_RUST_VERSION}" ]; then
     echo "# Rust: ${CODEX_ENV_RUST_VERSION} (default: ${current})"
     if [ "${current}" != "${CODEX_ENV_RUST_VERSION}" ]; then
        rustup default "${CODEX_ENV_RUST_VERSION}"
+       rustc --version
     fi
 fi
 
@@ -55,6 +58,7 @@ if [ -n "${CODEX_ENV_GO_VERSION}" ]; then
     echo "# Go: go${CODEX_ENV_GO_VERSION} (default: ${current})"
     if [ "${current}" != "go${CODEX_ENV_GO_VERSION}" ]; then
         mise use --global "go@${CODEX_ENV_GO_VERSION}"
+        go version
     fi
 fi
 
@@ -63,6 +67,7 @@ if [ -n "${CODEX_ENV_SWIFT_VERSION}" ]; then
     echo "# Swift: ${CODEX_ENV_SWIFT_VERSION} (default: ${current})"
     if [ "${current}" != "${CODEX_ENV_SWIFT_VERSION}" ]; then
         swiftly use "${CODEX_ENV_SWIFT_VERSION}"
+        swift --version
     fi
 fi
 
@@ -72,6 +77,7 @@ if [ -n "${CODEX_ENV_PHP_VERSION}" ]; then
     echo "# PHP: ${CODEX_ENV_PHP_VERSION} (default: ${current})"
     if [ "${current}" != "${CODEX_ENV_PHP_VERSION}" ]; then
         phpenv global "${CODEX_ENV_PHP_VERSION}snapshot"
+        php --version
     fi
 fi
 
@@ -80,5 +86,6 @@ if [ -n "${CODEX_ENV_JAVA_VERSION}" ]; then
     echo "# Java: ${CODEX_ENV_JAVA_VERSION} (default: ${current})"
     if [ "${current}" != "${CODEX_ENV_JAVA_VERSION}" ]; then
         mise use --global "java@${CODEX_ENV_JAVA_VERSION}"
+        java -version
     fi
 fi
