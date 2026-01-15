@@ -125,7 +125,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Pull image
+      - name: Download image artifact (PR only)
+        if: ${{ github.event_name != 'push' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-${{ matrix.arch }}
+          path: /tmp
+
+      - name: Load image from artifact (PR only)
+        if: ${{ github.event_name != 'push' }}
+        run: |
+          docker load -i /tmp/image-${{ matrix.arch }}.tar.gz
+
+      - name: Pull image from registry (push only)
+        if: ${{ github.event_name == 'push' }}
         run: |
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}-${{ github.sha }}
 
