@@ -18,6 +18,7 @@ This repository builds the image for both linux/amd64 and linux/arm64. However w
 Your installed Docker may support linux/amd64 emulation by passing the `--platform linux/amd64` flag.
 
 The arm64 image differs from the amd64 image in 2 ways:
+
 - OpenJDK 10 is not available on amd64
 
 The below script shows how can you approximate the `setup` environment in Codex:
@@ -41,14 +42,45 @@ docker run --rm -it \
 
 The following environment variables can be set to configure runtime installation. Note that a limited subset of versions are supported (indicated in the table below):
 
-| Environment variable       | Description                | Supported versions                               | Additional packages                                                  |
-| -------------------------- | -------------------------- | ------------------------------------------------ | -------------------------------------------------------------------- |
-| `CODEX_ENV_PYTHON_VERSION` | Python version to install  | `3.10`, `3.11.12`, `3.12`, `3.13`, `3.14`        | `pyenv`, `poetry`, `uv`, `ruff`, `black`, `mypy`, `pyright`, `isort` |
-| `CODEX_ENV_NODE_VERSION`   | Node.js version to install | `18`, `20`, `22`                                 | `corepack`, `yarn`, `pnpm`, `npm`                                    |
-| `CODEX_ENV_GO_VERSION`     | Go version to install      | `1.22.12`, `1.23.8`, `1.24.3`, `1.25.1`                    |                                                                      |
+| Environment variable       | Description                | Supported versions                        | Additional packages                                                  |
+| -------------------------- | -------------------------- | ----------------------------------------- | -------------------------------------------------------------------- |
+| `CODEX_ENV_PYTHON_VERSION` | Python version to install  | `3.10`, `3.11.12`, `3.12`, `3.13`, `3.14` | `pyenv`, `poetry`, `uv`, `ruff`, `black`, `mypy`, `pyright`, `isort` |
+| `CODEX_ENV_NODE_VERSION`   | Node.js version to install | `18`, `20`, `22`                          | `corepack`, `yarn`, `pnpm`, `npm`                                    |
+| `CODEX_ENV_GO_VERSION`     | Go version to install      | `1.22.12`, `1.23.8`, `1.24.3`, `1.25.1`   |                                                                      |
 
 > Rust, Swift, Ruby, and PHP runtimes are not included in this image to keep the footprint smaller.
 
+## Testing
+
+This repository includes comprehensive tests to verify environment variable functionality.
+
+### Running Tests Locally
+
+```bash
+# Build image
+docker build -t codex-universal:test .
+
+# Run all tests
+docker run --rm codex-universal:test /opt/codex/run_tests.sh
+
+# Run specific suite
+docker run --rm codex-universal:test /opt/codex/run_tests.sh --suite=python
+
+# Run with verbose output
+docker run --rm codex-universal:test /opt/codex/run_tests.sh --verbose
+```
+
+### Test Suites
+
+- `env_vars`: General environment variable handling
+- `python`: Python version switching (3.10-3.14)
+- `node`: Node.js version switching (18, 20, 22, 24)
+- `go`: Go version switching (1.22.12-1.25.1)
+- `combinations`: Multiple languages configured together
+
+### CI/CD
+
+Tests run automatically on PRs and pushes to main for both amd64 and arm64 architectures.
 
 ## What's included
 

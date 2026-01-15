@@ -3,9 +3,9 @@ name: Build image (ACR)
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -76,10 +76,37 @@ jobs:
           provenance: false
           sbom: false
 
+  test-env-vars:
+    needs: [build-amd64, build-arm64]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+        test_suite: [env_vars, python, node, go, combinations]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Aliyun Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Pull image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}-${{ github.sha }}
+
+      - name: Run ${{ matrix.test_suite }} tests
+        run: |
+          docker run --rm \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}-${{ github.sha }} \
+            /opt/codex/run_tests.sh --suite=${{ matrix.test_suite }}
+
   manifest:
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    needs: [build-amd64, build-arm64]
+    needs: [build-amd64, build-arm64, test-env-vars]
     steps:
       - name: Login to Aliyun Registry
         uses: docker/login-action@v3
