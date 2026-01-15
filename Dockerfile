@@ -171,20 +171,14 @@ RUN git -c advice.detachedHead=0 clone --branch "$NVM_VERSION" --depth 1 https:/
     && pnpm store prune || true \
     && yarn cache clean || true
 
-RUN . $NVM_DIR/nvm.sh \
-    && nvm use "$NODE_VERSION" \
-    && install_root=/opt/codex/npm \
-    && mkdir -p "$install_root" \
-    && cd "$install_root" \
-    && npm install @openai/codex \
-    && npm cache clean --force || true
-
 ### CODEX & CLAUDE CODE ###
 
 RUN . $NVM_DIR/nvm.sh \
     && nvm use "$NODE_VERSION" \
     && npm install -g @openai/codex \
     && npm install -g @anthropic-ai/claude-code \
+    && npm install -g ccusage \
+    && npm install -g @ccusage/codex \
     && node -e " \
         const fs = require('fs'); \
         const path = require('path'); \
