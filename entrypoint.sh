@@ -10,5 +10,5 @@ echo "Environment ready. Dropping you into a bash shell."
 if [ "$#" -eq 0 ]; then
   exec bash --login
 else
-  exec "$@"
+  exec bash --login -c 'exec "$@"' bash "$@"
 fi
