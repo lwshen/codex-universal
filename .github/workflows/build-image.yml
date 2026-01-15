@@ -92,8 +92,22 @@ jobs:
           cache-to: type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-arm64
           provenance: false
           sbom: false
+          load: ${{ github.event_name != 'push' }}
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save image as artifact (PR only)
+        if: ${{ github.event_name != 'push' }}
+        run: |
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }} | gzip > /tmp/image-arm64.tar.gz
+
+      - name: Upload image artifact (PR only)
+        if: ${{ github.event_name != 'push' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-arm64
+          path: /tmp/image-arm64.tar.gz
+          retention-days: 1
 
   test-env-vars:
     needs: [build-amd64, build-arm64]
