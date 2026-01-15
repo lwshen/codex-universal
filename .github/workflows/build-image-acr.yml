@@ -1,10 +1,11 @@
 name: Build image (ACR)
 
 on:
+  workflow_dispatch:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
 
 permissions:
   contents: read
