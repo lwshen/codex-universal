@@ -47,8 +47,22 @@ jobs:
           cache-to: type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-amd64
           provenance: false
           sbom: false
+          load: ${{ github.event_name != 'push' }}
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save image as artifact (PR only)
+        if: ${{ github.event_name != 'push' }}
+        run: |
+          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }} | gzip > /tmp/image-amd64.tar.gz
+
+      - name: Upload image artifact (PR only)
+        if: ${{ github.event_name != 'push' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-amd64
+          path: /tmp/image-amd64.tar.gz
+          retention-days: 1
 
   build-arm64:
     runs-on: ubuntu-24.04-arm
