@@ -264,6 +264,21 @@ RUN chmod +x /opt/codex/setup_universal.sh
 COPY verify.sh /opt/verify.sh
 RUN chmod +x /opt/verify.sh && bash -lc "TARGETARCH=$TARGETARCH /opt/verify.sh"
 
+### BATS TEST FRAMEWORK ###
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends bats || \
+    (curl -fsSL https://github.com/bats-core/bats-core/archive/refs/tags/v1.11.1.tar.gz -o /tmp/bats.tar.gz && \
+     mkdir -p /tmp/bats && \
+     tar -xzf /tmp/bats.tar.gz -C /tmp/bats --strip-components=1 && \
+     /tmp/bats/install.sh /usr/local && \
+     rm -rf /tmp/bats /tmp/bats.tar.gz) && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY tests /opt/codex/tests
+COPY run_tests.sh /opt/codex/run_tests.sh
+RUN chmod +x /opt/codex/tests/*.bats /opt/codex/run_tests.sh
+
 ### NON-ROOT USER ###
 
 RUN set -eux; \

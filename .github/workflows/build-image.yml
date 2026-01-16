@@ -3,9 +3,9 @@ name: Build image
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -44,11 +44,22 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }}
           # Use GHA cache only (works on PRs). Swap to registry cache on pushes if you prefer.
           cache-from: type=gha,scope=${{ github.workflow }}-${{ runner.os }}-amd64
-          cache-to:   type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-amd64
+          cache-to: type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-amd64
           provenance: false
           sbom: false
+          load: ${{ github.event_name != 'push' }}
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run tests (PR only)
+        if: ${{ github.event_name != 'push' }}
+        run: |
+          for suite in env_vars python_versions node_versions go_versions combinations; do
+            echo "Running $suite tests..."
+            docker run --rm \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }} \
+              /opt/codex/run_tests.sh --suite=$suite
+          done
 
   build-arm64:
     runs-on: ubuntu-24.04-arm
@@ -75,11 +86,22 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }}
           cache-from: type=gha,scope=${{ github.workflow }}-${{ runner.os }}-arm64
-          cache-to:   type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-arm64
+          cache-to: type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-arm64
           provenance: false
           sbom: false
+          load: ${{ github.event_name != 'push' }}
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run tests (PR only)
+        if: ${{ github.event_name != 'push' }}
+        run: |
+          for suite in env_vars python_versions node_versions go_versions combinations; do
+            echo "Running $suite tests..."
+            docker run --rm \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }} \
+              /opt/codex/run_tests.sh --suite=$suite
+          done
 
   manifest-and-attest:
     if: ${{ github.event_name == 'push' }}
