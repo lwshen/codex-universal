@@ -54,7 +54,7 @@ jobs:
       - name: Run tests (PR only)
         if: ${{ github.event_name != 'push' }}
         run: |
-          for suite in env_vars python node go combinations; do
+          for suite in env_vars python_versions node_versions go_versions combinations; do
             echo "Running $suite tests..."
             docker run --rm \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }} \
@@ -96,7 +96,7 @@ jobs:
       - name: Run tests (PR only)
         if: ${{ github.event_name != 'push' }}
         run: |
-          for suite in env_vars python node go combinations; do
+          for suite in env_vars python_versions node_versions go_versions combinations; do
             echo "Running $suite tests..."
             docker run --rm \
               ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }} \
@@ -110,7 +110,7 @@ jobs:
     strategy:
       matrix:
         arch: [amd64, arm64]
-        test_suite: [env_vars, python, node, go, combinations]
+        test_suite: [env_vars, python_versions, node_versions, go_versions, combinations]
     steps:
       - uses: actions/checkout@v4
 
