@@ -51,18 +51,15 @@ jobs:
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Save image as artifact (PR only)
+      - name: Run tests (PR only)
         if: ${{ github.event_name != 'push' }}
         run: |
-          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }} | gzip > /tmp/image-amd64.tar.gz
-
-      - name: Upload image artifact (PR only)
-        if: ${{ github.event_name != 'push' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image-amd64
-          path: /tmp/image-amd64.tar.gz
-          retention-days: 1
+          for suite in env_vars python node go combinations; do
+            echo "Running $suite tests..."
+            docker run --rm \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }} \
+              /opt/codex/run_tests.sh --suite=$suite
+          done
 
   build-arm64:
     runs-on: ubuntu-24.04-arm
@@ -96,20 +93,18 @@ jobs:
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
-      - name: Save image as artifact (PR only)
+      - name: Run tests (PR only)
         if: ${{ github.event_name != 'push' }}
         run: |
-          docker save ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }} | gzip > /tmp/image-arm64.tar.gz
-
-      - name: Upload image artifact (PR only)
-        if: ${{ github.event_name != 'push' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image-arm64
-          path: /tmp/image-arm64.tar.gz
-          retention-days: 1
+          for suite in env_vars python node go combinations; do
+            echo "Running $suite tests..."
+            docker run --rm \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }} \
+              /opt/codex/run_tests.sh --suite=$suite
+          done
 
   test-env-vars:
+    if: ${{ github.event_name == 'push' }}
     needs: [build-amd64, build-arm64]
     runs-on: ubuntu-latest
     strategy:
@@ -125,20 +120,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download image artifact (PR only)
-        if: ${{ github.event_name != 'push' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image-${{ matrix.arch }}
-          path: /tmp
-
-      - name: Load image from artifact (PR only)
-        if: ${{ github.event_name != 'push' }}
-        run: |
-          docker load -i /tmp/image-${{ matrix.arch }}.tar.gz
-
-      - name: Pull image from registry (push only)
-        if: ${{ github.event_name == 'push' }}
+      - name: Pull image from registry
         run: |
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.arch }}-${{ github.sha }}
 
