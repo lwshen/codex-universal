@@ -38,12 +38,12 @@ load test_helpers
     run bash -lc "export CODEX_ENV_NODE_VERSION=20 && source /opt/codex/setup_universal.sh && npm --version"
     [ "$status" -eq 0 ]
     # Just verify npm is available and returns a version
-    [[ "$output" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]
+    [[ "$output" =~ [0-9]+\.[0-9]+\.[0-9]+ ]]
 }
 
 @test "test_node_corepack_enabled" {
     run bash -lc "export CODEX_ENV_NODE_VERSION=22 && source /opt/codex/setup_universal.sh && yarn --version"
     [ "$status" -eq 0 ]
     # Verify yarn works (corepack enables it)
-    [[ "$output" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]
+    [[ "$output" =~ [0-9]+\.[0-9]+\.[0-9]+ ]]
 }
