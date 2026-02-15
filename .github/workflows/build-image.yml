@@ -2,6 +2,8 @@ name: Build image
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
   push:
     branches: ["main"]
   pull_request:
@@ -40,24 +42,24 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           platforms: linux/amd64
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }}
+          push: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.event_name == 'schedule' && format('nightly-{0}', github.run_number) || github.sha }}
           # Use GHA cache only (works on PRs). Swap to registry cache on pushes if you prefer.
           cache-from: type=gha,scope=${{ github.workflow }}-${{ runner.os }}-amd64
           cache-to: type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-amd64
           provenance: false
           sbom: false
-          load: ${{ github.event_name != 'push' }}
+          load: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests (PR only)
-        if: ${{ github.event_name != 'push' }}
+        if: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
         run: |
           for suite in env_vars python_versions node_versions go_versions combinations; do
             echo "Running $suite tests..."
             docker run --rm \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.sha }} \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:amd64-${{ github.event_name == 'schedule' && format('nightly-{0}', github.run_number) || github.sha }} \
               /opt/codex/run_tests.sh --suite=$suite
           done
 
@@ -83,28 +85,28 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           platforms: linux/arm64
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }}
+          push: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.event_name == 'schedule' && format('nightly-{0}', github.run_number) || github.sha }}
           cache-from: type=gha,scope=${{ github.workflow }}-${{ runner.os }}-arm64
           cache-to: type=gha,mode=min,scope=${{ github.workflow }}-${{ runner.os }}-arm64
           provenance: false
           sbom: false
-          load: ${{ github.event_name != 'push' }}
+          load: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
           secrets: |
             GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests (PR only)
-        if: ${{ github.event_name != 'push' }}
+        if: ${{ github.event_name != 'push' && github.event_name != 'schedule' }}
         run: |
           for suite in env_vars python_versions node_versions go_versions combinations; do
             echo "Running $suite tests..."
             docker run --rm \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.sha }} \
+              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:arm64-${{ github.event_name == 'schedule' && format('nightly-{0}', github.run_number) || github.sha }} \
               /opt/codex/run_tests.sh --suite=$suite
           done
 
   manifest-and-attest:
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
     runs-on: ubuntu-latest
     needs: [build-amd64, build-arm64]
     steps:
@@ -114,11 +116,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Stitch multi-arch manifest (:latest and :sha)
+      - name: Stitch multi-arch manifest (:latest and :versioned)
         run: |
+          VERSIONED_TAG="${GITHUB_SHA}"
+          if [ "${GITHUB_EVENT_NAME}" = "schedule" ]; then
+            VERSIONED_TAG="nightly-${GITHUB_RUN_NUMBER}"
+          fi
+
           docker buildx imagetools create \
             -t "$REGISTRY/$IMAGE_NAME:latest" \
-            -t "$REGISTRY/$IMAGE_NAME:${GITHUB_SHA}" \
+            -t "$REGISTRY/$IMAGE_NAME:${VERSIONED_TAG}" \
             "$REGISTRY/$IMAGE_NAME@${{ needs.build-amd64.outputs.digest }}" \
             "$REGISTRY/$IMAGE_NAME@${{ needs.build-arm64.outputs.digest }}"
 
