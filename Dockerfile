@@ -240,11 +240,9 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 ARG BAZELISK_VERSION=v1.26.0
 
-RUN --mount=type=cache,target=/root/.cache/mise \
-    for v in $GO_VERSIONS; do mise install "go@${v}"; done \
-    && mise use --global "go@${GO_VERSIONS%% *}" \
-    && mise use --global "golangci-lint@${GOLANG_CI_LINT_VERSION}" \
-    && mise cache clear || true
+RUN curl -L --fail https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-${TARGETOS}-${TARGETARCH} -o /usr/local/bin/bazelisk \
+    && chmod +x /usr/local/bin/bazelisk \
+    && ln -s /usr/local/bin/bazelisk /usr/local/bin/bazel
 
 ### GO ###
 
@@ -253,11 +251,11 @@ ARG GOLANG_CI_LINT_VERSION=2.1.6
 
 # Go defaults GOROOT to /usr/local/go - we just need to update PATH
 ENV PATH=/usr/local/go/bin:$HOME/go/bin:$PATH
-RUN for v in $GO_VERSIONS; do mise install "go@${v}"; done \
+RUN --mount=type=cache,target=/root/.cache/mise \
+    for v in $GO_VERSIONS; do mise install "go@${v}"; done \
     && mise use --global "go@${GO_VERSIONS%% *}" \
     && mise use --global "golangci-lint@${GOLANG_CI_LINT_VERSION}" \
-    && mise cache clear || true \
-    && rm -rf "$HOME/.cache/mise" "$HOME/.local/share/mise/downloads"
+    && mise cache clear || true
 
 ### ELIXIR ###
 
