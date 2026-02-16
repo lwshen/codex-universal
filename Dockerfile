@@ -225,6 +225,8 @@ ARG ARM_JAVA_VERSIONS="25 24 23 22 21 17"
 RUN --mount=type=cache,target=/root/.cache/mise \
     JAVA_VERSIONS="$( [ "$TARGETARCH" = "arm64" ] && echo "$ARM_JAVA_VERSIONS" || echo "$AMD_JAVA_VERSIONS" )" \
     && for v in $JAVA_VERSIONS; do mise install "java@${v}"; done \
+    && mise install "gradle@${GRADLE_VERSION}" \
+    && mise install "maven@${MAVEN_VERSION}" \
     && mise use --global "java@${JAVA_VERSIONS%% *}" \
     && mise use --global "gradle@${GRADLE_VERSION}" \
     && mise use --global "maven@${MAVEN_VERSION}" \
