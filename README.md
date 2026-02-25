@@ -29,7 +29,7 @@ The below script shows how can you approximate the `setup` environment in Codex:
 docker run --rm -it \
     -e CODEX_ENV_PYTHON_VERSION=3.12 \
     -e CODEX_ENV_NODE_VERSION=20 \
-    -e CODEX_ENV_GO_VERSION=1.24.3 \
+    -e CODEX_ENV_GO_VERSION=1.26.0 \
     -e ANTHROPIC_BASE_URL=$ANTHROPIC_BASE_URL \
     -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
     -v $(pwd):/workspace/$(basename $(pwd)) -w /workspace/$(basename $(pwd)) \
@@ -46,7 +46,7 @@ The following environment variables can be set to configure runtime installation
 | -------------------------- | -------------------------- | ----------------------------------------- | -------------------------------------------------------------------- |
 | `CODEX_ENV_PYTHON_VERSION` | Python version to install  | `3.10`, `3.11.12`, `3.12`, `3.13`, `3.14` | `pyenv`, `poetry`, `uv`, `ruff`, `black`, `mypy`, `pyright`, `isort` |
 | `CODEX_ENV_NODE_VERSION`   | Node.js version to install | `18`, `20`, `22`                          | `corepack`, `yarn`, `pnpm`, `npm`                                    |
-| `CODEX_ENV_GO_VERSION`     | Go version to install      | `1.22.12`, `1.23.8`, `1.24.3`, `1.25.1`   |                                                                      |
+| `CODEX_ENV_GO_VERSION`     | Go version to install      | `1.22.12`, `1.23.8`, `1.24.3`, `1.25.1`, `1.26.0` |                                                                      |
 
 > Rust, Swift, Ruby, and PHP runtimes are not included in this image to keep the footprint smaller.
 
@@ -75,7 +75,7 @@ docker run --rm codex-universal:test /opt/codex/run_tests.sh --verbose
 - `env_vars`: General environment variable handling
 - `python`: Python version switching (3.10-3.14)
 - `node`: Node.js version switching (18, 20, 22, 24)
-- `go`: Go version switching (1.22.12-1.25.1)
+- `go`: Go version switching (1.22.12-1.26.0)
 - `combinations`: Multiple languages configured together
 
 ### CI/CD

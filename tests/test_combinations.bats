@@ -22,10 +22,10 @@ load test_helpers
 }
 
 @test "test_python_and_go_only" {
-    run bash -lc "export CODEX_ENV_PYTHON_VERSION=3.14 CODEX_ENV_GO_VERSION=1.25.1 && source /opt/codex/setup_universal.sh && python3 --version && node -v && go version"
+    run bash -lc "export CODEX_ENV_PYTHON_VERSION=3.14 CODEX_ENV_GO_VERSION=1.26.0 && source /opt/codex/setup_universal.sh && python3 --version && node -v && go version"
     [ "$status" -eq 0 ]
     [[ "$output" == *"3.14"* ]]
-    [[ "$output" == *"go1.25.1"* ]]
+    [[ "$output" == *"go1.26.0"* ]]
     # Node should still work with default version
     [[ "$output" == *"v"* ]]
 }
