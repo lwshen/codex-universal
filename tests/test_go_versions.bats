@@ -28,6 +28,12 @@ load test_helpers
     [[ "$output" == *"go1.25.1"* ]]
 }
 
+@test "test_go_1_26_0_switching" {
+    run bash -lc "export CODEX_ENV_GO_VERSION=1.26.0 && source /opt/codex/setup_universal.sh && go version"
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"go1.26.0"* ]]
+}
+
 @test "test_go_mise_current_updated" {
     run bash -lc "export CODEX_ENV_GO_VERSION=1.24.3 && source /opt/codex/setup_universal.sh && mise current go"
     [ "$status" -eq 0 ]
